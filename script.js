@@ -1,6 +1,3 @@
-console.log("supabase =", typeof supabase);
-console.log("supabaseClient =", supabaseClient);
-
 const searchInput = document.getElementById("searchInput");
 const searchButton = document.getElementById("searchButton");
 
