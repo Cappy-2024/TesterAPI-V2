@@ -63,10 +63,10 @@ function createPlayerCard(player){
     `;
 
 
-    card.onclick=()=>{
+    card.onclick = () => {
 
-        displayPlayer(player);
-
+        loadPlayer(player.user_id);
+    
     };
 
 
