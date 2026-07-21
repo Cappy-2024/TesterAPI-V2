@@ -9,6 +9,29 @@
     QuotaMode: "Quota Mode",
   };
 
+  // Must match the `suffixes` list used by numberFormatModule.formatNumber
+  // in your Roblox game exactly, in the same order, or numbers will show
+  // the wrong suffix. Edit this array to match yours.
+  const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
+
+  // Mirrors numberFormatModule.formatNumber(number, decimalCount) from Roblox:
+  // divide by 1000 per suffix step, format to decimalCount decimals, then
+  // strip trailing zeros (and a trailing dot) before appending the suffix.
+  function formatNumber(number, decimalCount = 2) {
+    let n = Number(number);
+    if (!Number.isFinite(n)) return String(number ?? 0);
+
+    let suffixIndex = 0;
+    while (Math.abs(n) >= 1000 && suffixIndex < SUFFIXES.length - 1) {
+      n /= 1000;
+      suffixIndex += 1;
+    }
+
+    let formatted = n.toFixed(decimalCount);
+    formatted = formatted.replace(/\.?0+$/, "");
+    return formatted + SUFFIXES[suffixIndex];
+  }
+
   // ------------------------------------------------------------------ dom
   const el = {
     authArea: document.getElementById("authArea"),
@@ -77,7 +100,7 @@
   // ------------------------------------------------------------------ render
   function renderPath(path) {
     const node = pathTpl.content.cloneNode(true);
-    node.querySelector("[data-path-name]").textContent = `Path ${path.pathIdx + 1}`;
+    node.querySelector("[data-path-name]").textContent = `Path ${path.pathIdx}`;
     node.querySelector("[data-path-count]").textContent = `[${path.done}/${path.total}]`;
     const meter = node.querySelector("[data-path-meter]");
     for (const u of path.upgrades) {
@@ -99,7 +122,7 @@
     for (const [cName, cVal] of currencyEntries) {
       const chip = document.createElement("span");
       chip.className = "currency";
-      chip.innerHTML = `${esc(cName)}: <b>${esc(cVal)}</b>`;
+      chip.innerHTML = `${esc(cName)}: <b>${esc(formatNumber(cVal))}</b>`;
       currencies.appendChild(chip);
     }
 
@@ -135,16 +158,16 @@
     const data = row.data || {};
 
     node.querySelector("[data-username]").textContent = row.username;
-    node.querySelector("[data-stars]").textContent = data.Stars ?? 0;
-    node.querySelector("[data-plasma]").textContent = data.Plasma ?? 0;
-    node.querySelector("[data-xp]").textContent = data.GlobalXP ?? 0;
+    node.querySelector("[data-stars]").textContent = formatNumber(data.Stars ?? 0);
+    node.querySelector("[data-plasma]").textContent = formatNumber(data.Plasma ?? 0);
+    node.querySelector("[data-xp]").textContent = formatNumber(data.GlobalXP ?? 0);
     node.querySelector("[data-updated]").textContent = timeAgo(row.updated_at);
     node.querySelector("[data-status]").dataset.fresh = freshness(row.updated_at);
 
     node.querySelector("[data-userid]").textContent = row.roblox_user_id;
     node.querySelector("[data-version]").textContent = data.Version ?? "—";
     node.querySelector("[data-currentgame]").textContent = data.CurrentGame ?? "None";
-    node.querySelector("[data-xpfull]").textContent = data.GlobalXP ?? 0;
+    node.querySelector("[data-xpfull]").textContent = formatNumber(data.GlobalXP ?? 0);
 
     const gamemodesWrap = node.querySelector("[data-gamemodes]");
     const gamemodeData = data.GamemodeData || {};
