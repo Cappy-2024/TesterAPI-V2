@@ -1,3 +1,11 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+
+const supabaseClient = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
 const searchInput = document.getElementById("searchInput");
 const searchButton = document.getElementById("searchButton");
 
