@@ -179,3 +179,95 @@ h1{
     margin-bottom:0;
 
 }
+
+.gamemode{
+
+    margin-top:20px;
+
+    background:#252525;
+
+    border-radius:8px;
+
+    padding:10px;
+
+}
+
+.gamemode summary{
+
+    cursor:pointer;
+
+    font-size:20px;
+
+    font-weight:bold;
+
+}
+
+.currencyGrid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+
+    gap:10px;
+
+    margin-top:15px;
+
+}
+
+.currencyCard{
+
+    background:#333;
+
+    padding:15px;
+
+    border-radius:8px;
+
+    text-align:center;
+
+}
+
+.pathDropdown{
+
+    margin-top:15px;
+
+}
+
+.pathDropdown summary{
+
+    cursor:pointer;
+
+    font-size:17px;
+
+}
+
+.upgradeList{
+
+    margin-top:10px;
+
+}
+
+.upgrade{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    padding:8px 12px;
+
+    border-radius:5px;
+
+    margin-top:4px;
+
+}
+
+.owned{
+
+    background:#215b30;
+
+}
+
+.locked{
+
+    background:#552424;
+
+}
