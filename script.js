@@ -13,7 +13,7 @@ loadPlayers();
 
 async function loadPlayers(){
 
-    const {data,error} = await supabase
+    const {data,error} = await supabaseClient
         .from("tester_players")
         .select("*")
         .order("username");
@@ -98,7 +98,7 @@ searchButton.onclick=async()=>{
     if(/^\d+$/.test(search)){
 
 
-        query=supabase
+        query=supabaseClient
 
             .from("tester_players")
 
@@ -110,7 +110,7 @@ searchButton.onclick=async()=>{
     }else{
 
 
-        query=supabase
+        query=supabaseClient
 
             .from("tester_players")
 
