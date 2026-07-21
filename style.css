@@ -1,1 +1,93 @@
+*{
 
+    box-sizing:border-box;
+
+    font-family:Arial,Helvetica,sans-serif;
+
+}
+
+body{
+
+    margin:0;
+
+    background:#121212;
+
+    color:white;
+
+}
+
+#app{
+
+    width:90%;
+
+    max-width:1200px;
+
+    margin:auto;
+
+    padding:40px;
+
+}
+
+h1{
+
+    text-align:center;
+
+    margin-bottom:40px;
+
+}
+
+.searchBar{
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+.searchBar input{
+
+    flex:1;
+
+    padding:12px;
+
+    font-size:16px;
+
+    background:#222;
+
+    border:none;
+
+    color:white;
+
+}
+
+.searchBar button{
+
+    padding:12px 24px;
+
+    background:#4CAF50;
+
+    color:white;
+
+    border:none;
+
+    cursor:pointer;
+
+}
+
+.searchBar button:hover{
+
+    background:#45a049;
+
+}
+
+#playerContainer{
+
+    margin-top:30px;
+
+    background:#1f1f1f;
+
+    padding:20px;
+
+    border-radius:8px;
+
+}
