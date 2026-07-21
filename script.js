@@ -13,9 +13,9 @@ loadPlayers();
 
 async function loadPlayers(){
 
-    const {data,error} = await supabaseClient
+    const { data, error } = await supabaseClient
         .from("tester_players")
-        .select("*")
+        .select("user_id, username, display_name, updated_at")
         .order("username");
 
 
