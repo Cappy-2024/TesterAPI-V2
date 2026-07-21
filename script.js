@@ -154,7 +154,27 @@ searchButton.onclick=async()=>{
 
 };
 
+async function loadPlayer(userId) {
 
+    playerContainer.innerHTML = "<p>Loading player...</p>";
+
+    const { data, error } = await supabaseClient
+        .from("tester_players")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+    if (error) {
+
+        console.error(error);
+
+        playerContainer.innerHTML = "<p>Failed to load player.</p>";
+
+        return;
+    }
+
+    displayPlayer(data);
+}
 
 function displayPlayer(player){
 
