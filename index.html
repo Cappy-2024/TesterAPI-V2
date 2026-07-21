@@ -15,8 +15,11 @@
 
 <header class="topbar">
   <div class="topbar__brand">
-    <span class="topbar__eyebrow">Live Player Telemetry</span>
-    <h1 class="topbar__title">Tester Tracker</h1>
+    <img class="topbar__logo" src="assets/logo.png" alt="" />
+    <div>
+      <span class="topbar__eyebrow">Live Player Telemetry</span>
+      <h1 class="topbar__title">Tester Tracker</h1>
+    </div>
   </div>
 
   <div class="topbar__controls">
@@ -108,7 +111,9 @@
       <span data-path-name></span>
       <span class="path__count" data-path-count></span>
     </div>
-    <div class="path__meter" data-path-meter></div>
+    <div class="path__track">
+      <div class="path__fill" data-path-fill></div>
+    </div>
   </div>
 </template>
 
