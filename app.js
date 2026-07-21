@@ -102,14 +102,15 @@
     const node = pathTpl.content.cloneNode(true);
     node.querySelector("[data-path-name]").textContent = `Path ${path.pathIdx}`;
     node.querySelector("[data-path-count]").textContent = `[${path.done}/${path.total}]`;
-    const meter = node.querySelector("[data-path-meter]");
-    for (const u of path.upgrades) {
-      const seg = document.createElement("div");
-      seg.className = "seg";
-      seg.dataset.on = String(u.value);
-      seg.title = `${u.key} — ${u.value ? "purchased" : "locked"}`;
-      meter.appendChild(seg);
-    }
+    const fill = node.querySelector("[data-path-fill]");
+    const percent = path.total ? Math.round((path.done / path.total) * 100) : 0;
+    fill.style.width = `${percent}%`;
+
+    const locked = path.upgrades.filter((u) => !u.value).map((u) => u.key);
+    fill.parentElement.title = locked.length
+      ? `Locked: ${locked.join(", ")}`
+      : "All upgrades purchased";
+
     return node;
   }
 
