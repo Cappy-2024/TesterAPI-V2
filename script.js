@@ -225,3 +225,9 @@ function displayPlayer(player) {
     renderGamemodes(save);
 
 }
+
+function renderGamemodes(save) {
+
+    console.log(save.GamemodeData);
+
+}
