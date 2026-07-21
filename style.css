@@ -141,3 +141,41 @@ h1{
     margin:5px 0;
 
 }
+
+.summaryGrid {
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+
+    gap:15px;
+
+    margin-top:20px;
+
+}
+
+.summaryCard {
+
+    background:#2d2d2d;
+
+    padding:20px;
+
+    border-radius:10px;
+
+    text-align:center;
+
+}
+
+.summaryCard h3 {
+
+    margin-top:0;
+
+}
+
+.summaryCard p {
+
+    font-size:22px;
+
+    margin-bottom:0;
+
+}
