@@ -228,6 +228,139 @@ function displayPlayer(player) {
 
 function renderGamemodes(save) {
 
-    console.log(save.GamemodeData);
+    const container = document.getElementById("gamemodeContainer");
+
+    container.innerHTML = "";
+
+    const gamemodes = save.GamemodeData;
+
+    for (const [gamemodeName, gamemode] of Object.entries(gamemodes)) {
+
+        const details = document.createElement("details");
+
+        details.className = "gamemode";
+
+        details.open = false;
+
+        const summary = document.createElement("summary");
+
+        summary.textContent = gamemodeName;
+
+        details.appendChild(summary);
+
+        // Currency Section
+
+        const currencyDiv = document.createElement("div");
+
+        currencyDiv.className = "currencyGrid";
+
+        for (const [currency, value] of Object.entries(gamemode.Currencies)) {
+
+            const card = document.createElement("div");
+
+            card.className = "currencyCard";
+
+            card.innerHTML = `
+
+                <h4>${currency}</h4>
+
+                <p>${Number(value).toLocaleString()}</p>
+
+            `;
+
+            currencyDiv.appendChild(card);
+
+        }
+
+        details.appendChild(currencyDiv);
+
+        renderPaths(details, gamemode);
+
+        container.appendChild(details);
+
+    }
+
+}
+
+function renderPaths(parent, gamemode) {
+
+    if (!gamemode.Upgrades) {
+
+        return;
+
+    }
+
+    const paths = {};
+
+    for (const [upgrade, purchased] of Object.entries(gamemode.Upgrades)) {
+
+        const path = upgrade.split("-")[0];
+
+        if (!paths[path]) {
+
+            paths[path] = [];
+
+        }
+
+        paths[path].push({
+            id: upgrade,
+            purchased
+        });
+
+    }
+
+    const sortedPaths = Object.keys(paths).sort((a, b) => Number(a) - Number(b));
+
+    for (const path of sortedPaths) {
+
+        const upgrades = paths[path];
+
+        const purchased = upgrades.filter(u => u.purchased).length;
+
+        const dropdown = document.createElement("details");
+
+        dropdown.className = "pathDropdown";
+
+        dropdown.innerHTML = `
+
+            <summary>
+
+                Path ${path} [${purchased}/${upgrades.length}]
+
+            </summary>
+
+        `;
+
+        const list = document.createElement("div");
+
+        list.className = "upgradeList";
+
+        upgrades.sort((a,b)=>a.id.localeCompare(b.id));
+
+        for (const upgrade of upgrades) {
+
+            const row = document.createElement("div");
+
+            row.className = upgrade.purchased
+                ? "upgrade owned"
+                : "upgrade locked";
+
+            row.innerHTML = `
+
+                <span>${upgrade.id}</span>
+
+                <span>${upgrade.purchased ? "✔" : "✖"}</span>
+
+            `;
+
+            list.appendChild(row);
+
+        }
+
+        dropdown.appendChild(list);
+
+        parent.appendChild(dropdown);
+
+    }
 
 }
