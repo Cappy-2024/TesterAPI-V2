@@ -1,57 +1,186 @@
 const searchInput = document.getElementById("searchInput");
 const searchButton = document.getElementById("searchButton");
+
 const playerContainer = document.getElementById("playerContainer");
+const playerList = document.getElementById("playerList");
 
-searchButton.onclick = async () => {
 
-    const search = searchInput.value.trim();
+// Load all players when website opens
 
-    if (!search) {
-        return;
-    }
+loadPlayers();
 
-    playerContainer.innerHTML = "<p>Searching...</p>";
 
-    let query;
 
-    if (/^\d+$/.test(search)) {
+async function loadPlayers(){
 
-        query = supabase
-            .from("tester_players")
-            .select("*")
-            .eq("user_id", Number(search))
-            .single();
+    const {data,error} = await supabase
+        .from("tester_players")
+        .select("*")
+        .order("username");
 
-    } else {
 
-        query = supabase
-            .from("tester_players")
-            .select("*")
-            .ilike("username", search)
-            .single();
-
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-
-        playerContainer.innerHTML = "<p>Player not found.</p>";
+    if(error){
 
         console.error(error);
 
+        playerList.innerHTML =
+            "Failed loading players.";
+
         return;
 
     }
 
-    playerContainer.innerHTML = `
-        <h2>${data.username}</h2>
 
-        <p><strong>Display Name:</strong> ${data.display_name}</p>
+    playerList.innerHTML="";
 
-        <p><strong>UserId:</strong> ${data.user_id}</p>
 
-        <p><strong>Last Updated:</strong> ${data.updated_at}</p>
+    for(const player of data){
+
+        createPlayerCard(player);
+
+    }
+
+}
+
+
+
+function createPlayerCard(player){
+
+
+    const card=document.createElement("div");
+
+    card.className="playerCard";
+
+
+    card.innerHTML=`
+
+        <h3>${player.username}</h3>
+
+        <p>${player.display_name}</p>
+
+        <p>UserId: ${player.user_id}</p>
+
     `;
 
+
+    card.onclick=()=>{
+
+        displayPlayer(player);
+
+    };
+
+
+    playerList.appendChild(card);
+
+}
+
+
+
+searchButton.onclick=async()=>{
+
+
+    const search=searchInput.value.trim();
+
+
+    if(!search){
+
+        return;
+
+    }
+
+
+    playerContainer.innerHTML="Searching...";
+
+
+    let query;
+
+
+    if(/^\d+$/.test(search)){
+
+
+        query=supabase
+
+            .from("tester_players")
+
+            .select("*")
+
+            .eq("user_id",Number(search));
+
+
+    }else{
+
+
+        query=supabase
+
+            .from("tester_players")
+
+            .select("*")
+
+            .ilike("username",`%${search}%`);
+
+    }
+
+
+
+    const {data,error}=await query;
+
+
+    if(error){
+
+        console.error(error);
+
+        playerContainer.innerHTML=
+            "Search failed.";
+
+        return;
+
+    }
+
+
+
+    if(data.length===0){
+
+        playerContainer.innerHTML=
+            "Player not found.";
+
+        return;
+
+    }
+
+
+
+    displayPlayer(data[0]);
+
+
 };
+
+
+
+function displayPlayer(player){
+
+
+    playerContainer.innerHTML=`
+
+        <h2>${player.username}</h2>
+
+        <p>
+        Display Name:
+        ${player.display_name}
+        </p>
+
+
+        <p>
+        UserId:
+        ${player.user_id}
+        </p>
+
+
+        <p>
+        Last Updated:
+        ${new Date(player.updated_at).toLocaleString()}
+        </p>
+
+    `;
+
+
+}
