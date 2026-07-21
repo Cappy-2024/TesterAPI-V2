@@ -149,7 +149,7 @@ searchButton.onclick=async()=>{
 
 
 
-    displayPlayer(data[0]);
+    loadPlayer(data[0].user_id);
 
 
 };
@@ -176,31 +176,52 @@ async function loadPlayer(userId) {
     displayPlayer(data);
 }
 
-function displayPlayer(player){
+function displayPlayer(player) {
 
+    const save = player.player_data;
 
-    playerContainer.innerHTML=`
+    playerContainer.innerHTML = `
 
         <h2>${player.username}</h2>
 
-        <p>
-        Display Name:
-        ${player.display_name}
-        </p>
+        <hr>
 
+        <div class="summaryGrid">
 
-        <p>
-        UserId:
-        ${player.user_id}
-        </p>
+            <div class="summaryCard">
+                <h3>Version</h3>
+                <p>${save.Version}</p>
+            </div>
 
+            <div class="summaryCard">
+                <h3>Global XP</h3>
+                <p>${save.GlobalXP.toLocaleString()}</p>
+            </div>
 
-        <p>
-        Last Updated:
-        ${new Date(player.updated_at).toLocaleString()}
-        </p>
+            <div class="summaryCard">
+                <h3>Plasma</h3>
+                <p>${save.Plasma.toLocaleString()}</p>
+            </div>
+
+            <div class="summaryCard">
+                <h3>Current Game</h3>
+                <p>${save.CurrentGame ?? "None"}</p>
+            </div>
+
+        </div>
+
+        <br>
+
+        <strong>Display Name:</strong> ${player.display_name}<br>
+
+        <strong>UserId:</strong> ${player.user_id}<br>
+
+        <strong>Updated:</strong> ${new Date(player.updated_at).toLocaleString()}
+
+        <div id="gamemodeContainer"></div>
 
     `;
 
+    renderGamemodes(save);
 
 }
