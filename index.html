@@ -57,11 +57,42 @@
     <button id="logoutFromDenied" class="btn btn--ghost">Sign out</button>
   </section>
 
-  <!-- Authorized dashboard -->
-  <section id="dashboard" class="dashboard" hidden>
-    <div class="statline" id="statline"></div>
-    <div id="playerGrid" class="player-grid"></div>
-    <p id="emptyState" class="empty-state" hidden>No testers match that search.</p>
+  <!-- Authorized -->
+  <section id="authorized" hidden>
+    <nav class="tabs" id="viewTabs">
+      <button class="tab" data-view="roster" type="button">Roster</button>
+      <button class="tab" data-view="analytics" type="button">Analytics</button>
+    </nav>
+
+    <div id="dashboard" class="dashboard">
+      <div class="statline" id="statline"></div>
+      <div id="playerGrid" class="player-grid"></div>
+      <p id="emptyState" class="empty-state" hidden>No testers match that search.</p>
+    </div>
+
+    <div id="analytics" class="analytics" hidden>
+      <div class="analytics__cards" id="statCards"></div>
+
+      <div class="panel analytics__section">
+        <div class="analytics__section-head">
+          <h3>Gamemode completion</h3>
+          <select id="gamemodeSelect" class="select"></select>
+        </div>
+        <p class="analytics__note" id="completionNote"></p>
+        <div class="path-avg-list" id="pathAvgList"></div>
+      </div>
+
+      <div class="analytics__row">
+        <div class="panel analytics__section">
+          <h3>Most playtime</h3>
+          <ol class="leaderboard" id="playtimeLeaderboard"></ol>
+        </div>
+        <div class="panel analytics__section">
+          <h3>Highest Global XP</h3>
+          <ol class="leaderboard" id="xpLeaderboard"></ol>
+        </div>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -85,6 +116,8 @@
         <div class="detail-field"><span>Version</span><b data-version></b></div>
         <div class="detail-field"><span>Current game</span><b data-currentgame></b></div>
         <div class="detail-field"><span>Global XP</span><b data-xpfull></b></div>
+        <div class="detail-field"><span>Playtime</span><b data-playtime></b></div>
+        <div class="detail-field"><span>Last session</span><b data-sessiontime></b></div>
       </div>
       <div class="gamemodes" data-gamemodes></div>
     </div>
