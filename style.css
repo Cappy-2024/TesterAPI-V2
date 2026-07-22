@@ -453,6 +453,7 @@ body {
 
 /* ---------------------------------------------------------------- analytics */
 .analytics { display: flex; flex-direction: column; gap: 18px; }
+.analytics[hidden] { display: none; }
 
 .analytics__cards {
   display: grid;
