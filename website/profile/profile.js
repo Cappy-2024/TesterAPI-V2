@@ -43,6 +43,23 @@
     mountEl.dataset.kind = kind || "";
   }
 
+  // supabase-js collapses any non-2xx Edge Function response into a generic
+  // "Edge Function returned a non-2xx status code" and hides the response
+  // body — the actual { error: "..." } message is still on the raw
+  // Response object at error.context, so pull it out from there.
+  async function extractFunctionError(error) {
+    if (!error) return "Something went wrong. Try again.";
+    try {
+      if (error.context && typeof error.context.json === "function") {
+        const body = await error.context.json();
+        if (body?.error) return body.error;
+      }
+    } catch (_) {
+      // fall through to the generic message below
+    }
+    return error.message || "Something went wrong. Try again.";
+  }
+
   // -------------------------------------------------------------- stats view
   function renderStats(row) {
     const data = row.data || {};
@@ -128,7 +145,7 @@
     el.findBtn.disabled = false;
 
     if (error) {
-      setMessage(el.startMessage, error.message || "Something went wrong. Try again.", "error");
+      setMessage(el.startMessage, await extractFunctionError(error), "error");
       return;
     }
     if (data?.error) {
@@ -160,7 +177,7 @@
     el.confirmBtn.disabled = false;
 
     if (error) {
-      setMessage(el.pendingMessage, error.message || "Something went wrong. Try again.", "error");
+      setMessage(el.pendingMessage, await extractFunctionError(error), "error");
       return;
     }
     if (data?.error) {
