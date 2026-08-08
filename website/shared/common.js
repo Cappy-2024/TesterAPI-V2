@@ -182,9 +182,21 @@ window.TT = (() => {
     document.getElementById("logoutBtn").addEventListener("click", () => sb.auth.signOut());
   }
 
+  // supabase-js silently re-validates the session whenever the tab regains
+  // focus, firing the same event a real sign-in fires. Left unfiltered,
+  // every page re-runs its whole setup on every tab switch — which on the
+  // profile page meant wiping out an in-progress verification screen. Only
+  // call the handler when the signed-in user actually changes.
   function initAuth(handler) {
-    sb.auth.onAuthStateChange((_event, session) => handler(session));
-    sb.auth.getSession().then(({ data }) => handler(data.session));
+    let lastUserId; // undefined = not yet initialized
+    const maybeHandle = (session) => {
+      const uid = session?.user?.id || null;
+      if (uid === lastUserId) return;
+      lastUserId = uid;
+      handler(session);
+    };
+    sb.auth.onAuthStateChange((_event, session) => maybeHandle(session));
+    sb.auth.getSession().then(({ data }) => maybeHandle(data.session));
   }
 
   function signInWithDiscord() {
