@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tester Tracker — My Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../shared/style.css?v=4" />
+</head>
+<body>
+
+<div class="scanline" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <img class="topbar__logo" src="../assets/logo.png" alt="" />
+    <div>
+      <span class="topbar__eyebrow">Live Player Telemetry</span>
+      <h1 class="topbar__title">Tester Tracker</h1>
+    </div>
+  </div>
+
+  <div class="topbar__controls">
+    <nav class="tabs tabs--top" id="pageNav">
+      <a class="tab" href="../index.html">Roster</a>
+      <a class="tab" href="../analytics/">Analytics</a>
+      <a class="tab" href="../admin-reports/">Reports</a>
+      <a class="tab" href="../profile/">My Stats</a>
+      <a class="tab tab--active" href="./">My Reports</a>
+    </nav>
+
+    <div id="authArea" class="auth"></div>
+  </div>
+</header>
+
+<main id="view" class="view view--narrow">
+
+  <!-- Logged out -->
+  <section id="gate" class="panel gate">
+    <div class="gate__glyph" aria-hidden="true">
+      <div class="gate__ring"></div>
+      <div class="gate__ring gate__ring--2"></div>
+    </div>
+    <p class="gate__eyebrow">Tester access</p>
+    <h2>Sign in to file or view bug reports</h2>
+    <p class="gate__body">Sign in with Discord to submit bugs and track their status.</p>
+    <button id="loginBtn" class="btn btn--discord">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.3 4.9A17.6 17.6 0 0 0 15.9 3.4a.1.1 0 0 0-.1.05c-.2.35-.4.8-.55 1.15a16.3 16.3 0 0 0-4.9 0c-.15-.36-.36-.8-.56-1.15a.1.1 0 0 0-.1-.05 17.5 17.5 0 0 0-4.4 1.5.1.1 0 0 0-.05.04C2.9 8.3 2.3 11.6 2.6 14.9a.1.1 0 0 0 .04.08 17.6 17.6 0 0 0 5.3 2.5.1.1 0 0 0 .11-.04c.4-.56.77-1.15 1.1-1.77a.1.1 0 0 0-.05-.14 11.6 11.6 0 0 1-1.66-.8.1.1 0 0 1 0-.17c.1-.09.23-.18.34-.27a.1.1 0 0 1 .1 0c3.5 1.6 7.3 1.6 10.75 0a.1.1 0 0 1 .1 0c.11.1.23.18.34.27a.1.1 0 0 1 0 .17c-.53.31-1.08.58-1.66.8a.1.1 0 0 0-.05.14c.34.62.72 1.2 1.1 1.77a.1.1 0 0 0 .11.04 17.5 17.5 0 0 0 5.31-2.5.1.1 0 0 0 .04-.08c.36-3.9-.6-7.15-2.5-10a.1.1 0 0 0-.04-.05ZM9.7 12.9c-.94 0-1.72-.87-1.72-1.94 0-1.07.76-1.94 1.72-1.94.96 0 1.74.88 1.72 1.94 0 1.07-.76 1.94-1.72 1.94Zm6.6 0c-.94 0-1.71-.87-1.71-1.94 0-1.07.76-1.94 1.71-1.94.97 0 1.74.88 1.72 1.94 0 1.07-.75 1.94-1.72 1.94Z"/></svg>
+      Continue with Discord
+    </button>
+  </section>
+
+  <!-- Signed in, but hasn't linked a Roblox account yet -->
+  <section id="notLinked" class="panel gate" hidden>
+    <p class="gate__eyebrow">Verify first</p>
+    <h2>Link your Roblox account to file reports</h2>
+    <p class="gate__body">Bug reports are tied to your tester profile — verify your Roblox account on My Stats first, then come back here.</p>
+    <a class="btn btn--discord" href="../profile/">Go verify my account</a>
+  </section>
+
+  <!-- Main content -->
+  <section id="reportsView" class="stats-view" hidden>
+    <div class="reports-header">
+      <div>
+        <h2 class="reports-header__title">Your bug reports</h2>
+        <p class="reports-header__sub">Submit a new one, or check on ones you've already sent in.</p>
+      </div>
+      <button id="newReportBtn" class="btn btn--discord">New report</button>
+    </div>
+
+    <div class="panel analytics__section">
+      <h3>Pending review <span class="section-count" id="pendingCount"></span></h3>
+      <div class="report-list" id="pendingList"></div>
+      <p class="empty-state" id="pendingEmpty" hidden>Nothing pending right now.</p>
+    </div>
+
+    <div class="panel analytics__section">
+      <h3>Approved <span class="section-count" id="approvedCount"></span></h3>
+      <div class="report-list" id="approvedList"></div>
+      <p class="empty-state" id="approvedEmpty" hidden>No approved reports yet.</p>
+    </div>
+
+    <div class="panel analytics__section">
+      <h3>Resolved <span class="section-count" id="resolvedCount"></span></h3>
+      <div class="report-list" id="resolvedList"></div>
+      <p class="empty-state" id="resolvedEmpty" hidden>Nothing resolved yet.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- New report form -->
+<div class="modal-overlay" id="newReportOverlay" hidden>
+  <div class="modal-panel">
+    <h2>Report a bug</h2>
+    <p class="modal-panel__sub">Give as much detail as you can — it helps get your report reviewed faster.</p>
+    <form id="newReportForm">
+      <div class="field">
+        <label for="titleInput">Title</label>
+        <input type="text" id="titleInput" maxlength="120" required />
+      </div>
+      <div class="field">
+        <label for="descriptionInput">Description</label>
+        <textarea id="descriptionInput" maxlength="2000" required></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="severityInput">Severity</label>
+          <select id="severityInput" required>
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="typeInput">Bug type</label>
+          <select id="typeInput" required>
+            <option value="Scripting">Scripting</option>
+            <option value="Balancing">Balancing</option>
+            <option value="Build">Build</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="envInput">Environment</label>
+          <select id="envInput" required>
+            <option value="Dev">Dev</option>
+            <option value="Main">Main</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="mediaInput">Media (optional)</label>
+        <input type="file" id="mediaInput" accept="image/*,video/*" multiple />
+        <span class="field-hint">Up to 3 files, 25MB each — photos or short clips.</span>
+      </div>
+      <p class="form-message" id="formMessage"></p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn--ghost" id="cancelReportBtn">Cancel</button>
+        <button type="submit" class="btn btn--discord" id="submitReportBtn">Submit report</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<template id="reportCardTemplate">
+  <article class="card">
+    <button class="report-card__summary" data-toggle>
+      <span>
+        <span class="report-card__title" data-title></span>
+        <span class="report-card__submitter" data-meta></span>
+      </span>
+      <span class="badge-row">
+        <span class="badge" data-severity-badge></span>
+        <span class="badge" data-points-badge hidden></span>
+      </span>
+      <span class="report-card__meta" data-created></span>
+      <svg class="card__chevron" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="report-card__body" data-body hidden>
+      <div class="badge-row">
+        <span class="badge" data-type-badge></span>
+        <span class="badge" data-env-badge></span>
+      </div>
+      <p class="report-card__description" data-description></p>
+      <div class="media-grid" data-media></div>
+    </div>
+  </article>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/common.js"></script>
+<script src="reports.js"></script>
+</body>
+</html>
