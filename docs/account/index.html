@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tester Tracker — My Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../shared/style.css?v=5" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <img class="topbar__logo" src="../assets/logo.png" alt="" />
+    <div>
+      <span class="topbar__eyebrow">Live Player Telemetry</span>
+      <h1 class="topbar__title">Tester Tracker</h1>
+    </div>
+  </div>
+
+  <div class="topbar__controls">
+    <nav class="tabs tabs--top" id="pageNav"></nav>
+    <div id="authArea" class="auth"></div>
+  </div>
+</header>
+
+<main id="view" class="view view--narrow">
+
+  <!-- Logged out -->
+  <section id="gate" class="panel gate">
+    <div class="gate__glyph" aria-hidden="true">
+      <div class="gate__ring"></div>
+      <div class="gate__ring gate__ring--2"></div>
+    </div>
+    <p class="gate__eyebrow">Tester access</p>
+    <h2>Sign in to view your account</h2>
+    <p class="gate__body">Sign in with Discord to see your stats, file bug reports, and track your progress.</p>
+    <button id="loginBtn" class="btn btn--discord">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.3 4.9A17.6 17.6 0 0 0 15.9 3.4a.1.1 0 0 0-.1.05c-.2.35-.4.8-.55 1.15a16.3 16.3 0 0 0-4.9 0c-.15-.36-.36-.8-.56-1.15a.1.1 0 0 0-.1-.05 17.5 17.5 0 0 0-4.4 1.5.1.1 0 0 0-.05.04C2.9 8.3 2.3 11.6 2.6 14.9a.1.1 0 0 0 .04.08 17.6 17.6 0 0 0 5.3 2.5.1.1 0 0 0 .11-.04c.4-.56.77-1.15 1.1-1.77a.1.1 0 0 0-.05-.14 11.6 11.6 0 0 1-1.66-.8.1.1 0 0 1 0-.17c.1-.09.23-.18.34-.27a.1.1 0 0 1 .1 0c3.5 1.6 7.3 1.6 10.75 0a.1.1 0 0 1 .1 0c.11.1.23.18.34.27a.1.1 0 0 1 0 .17c-.53.31-1.08.58-1.66.8a.1.1 0 0 0-.05.14c.34.62.72 1.2 1.1 1.77a.1.1 0 0 0 .11.04 17.5 17.5 0 0 0 5.31-2.5.1.1 0 0 0 .04-.08c.36-3.9-.6-7.15-2.5-10a.1.1 0 0 0-.04-.05ZM9.7 12.9c-.94 0-1.72-.87-1.72-1.94 0-1.07.76-1.94 1.72-1.94.96 0 1.74.88 1.72 1.94 0 1.07-.76 1.94-1.72 1.94Zm6.6 0c-.94 0-1.71-.87-1.71-1.94 0-1.07.76-1.94 1.71-1.94.97 0 1.74.88 1.72 1.94 0 1.07-.75 1.94-1.72 1.94Z"/></svg>
+      Continue with Discord
+    </button>
+  </section>
+
+  <!-- Brief pause while we check for a linked account -->
+  <section id="loading" class="panel gate" hidden>
+    <p class="gate__eyebrow">One second</p>
+    <h2>Checking your account…</h2>
+  </section>
+
+  <!-- Step 1: enter Roblox username -->
+  <section id="verifyStart" class="panel gate" hidden>
+    <p class="gate__eyebrow">Link your Roblox account</p>
+    <h2>What's your Roblox username?</h2>
+    <p class="gate__body">We'll check it against tracked tester data — you'll need to have played at least one session already.</p>
+    <form id="usernameForm" class="verify-form">
+      <input id="usernameInput" type="text" placeholder="Roblox username" autocomplete="off" required />
+      <button type="submit" class="btn btn--discord" id="findBtn">Find my account</button>
+    </form>
+    <p class="form-message" id="startMessage"></p>
+  </section>
+
+  <!-- Step 2: confirm via bio code -->
+  <section id="verifyPending" class="panel gate" hidden>
+    <p class="gate__eyebrow">One more step</p>
+    <h2>Add these emoji to your Roblox bio</h2>
+    <p class="gate__body">Go to your Roblox profile → <b>Edit Profile → About</b>, paste the emoji below anywhere in your bio (in this order), save it, then come back and confirm. You can remove them again right after — they're only needed for this one check.</p>
+    <div class="verify-code" id="verifyCode"></div>
+    <p class="gate__body">Verifying <b id="pendingUsername"></b></p>
+    <div class="gate__actions">
+      <button id="confirmBtn" class="btn btn--discord">I've updated my bio — Confirm</button>
+      <button id="restartBtn" class="btn btn--ghost">Try a different username</button>
+    </div>
+    <p class="form-message" id="pendingMessage"></p>
+  </section>
+
+  <!-- Verified: account area -->
+  <section id="authorized" hidden>
+    <nav class="tabs" id="accountTabs">
+      <button class="tab" data-view="stats" type="button">My Stats</button>
+      <button class="tab" data-view="reports" type="button">My Reports <span class="section-count" id="reportsTabCount"></span></button>
+    </nav>
+
+    <!-- My Stats -->
+    <div id="statsView" class="stats-view">
+      <div class="panel profile-card">
+        <div class="profile-card__head">
+          <span class="card__status" data-status></span>
+          <h2 data-username></h2>
+          <span class="card__meta" data-updated></span>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-field"><span>Stars</span><b data-stars></b></div>
+          <div class="detail-field"><span>Plasma</span><b data-plasma></b></div>
+          <div class="detail-field"><span>Points</span><b data-points></b></div>
+          <div class="detail-field"><span>Global XP</span><b data-xp></b></div>
+          <div class="detail-field"><span>Playtime</span><b data-playtime></b></div>
+          <div class="detail-field"><span>Last session</span><b data-sessiontime></b></div>
+          <div class="detail-field"><span>Current game</span><b data-currentgame></b></div>
+        </div>
+      </div>
+
+      <div class="panel analytics__section">
+        <h3>Where you rank</h3>
+        <p class="analytics__note" id="placementNote">Compared against all tracked testers.</p>
+        <div class="analytics__cards" id="placementCards"></div>
+      </div>
+
+      <div class="panel analytics__section">
+        <h3>Your progress</h3>
+        <div class="gamemodes" data-gamemodes></div>
+      </div>
+    </div>
+
+    <!-- My Reports -->
+    <div id="reportsView" hidden>
+      <div class="section-toolbar">
+        <p class="reports-header__sub">Submit a new one, or check on ones you've already sent in.</p>
+        <button id="newReportBtn" class="btn btn--discord">New report</button>
+      </div>
+
+      <div class="panel analytics__section">
+        <h3>Pending review <span class="section-count" id="pendingCount"></span></h3>
+        <div class="report-list" id="pendingList"></div>
+        <p class="empty-state" id="pendingEmpty" hidden>Nothing pending right now.</p>
+      </div>
+
+      <div class="panel analytics__section">
+        <h3>Approved <span class="section-count" id="approvedCount"></span></h3>
+        <div class="report-list" id="approvedList"></div>
+        <p class="empty-state" id="approvedEmpty" hidden>No approved reports yet.</p>
+      </div>
+
+      <div class="panel analytics__section">
+        <h3>Resolved <span class="section-count" id="resolvedCount"></span></h3>
+        <div class="report-list" id="resolvedList"></div>
+        <p class="empty-state" id="resolvedEmpty" hidden>Nothing resolved yet.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- New report form -->
+<div class="modal-overlay" id="newReportOverlay" hidden>
+  <div class="modal-panel">
+    <h2>Report a bug</h2>
+    <p class="modal-panel__sub">Give as much detail as you can — it helps get your report reviewed faster.</p>
+    <form id="newReportForm">
+      <div class="field">
+        <label for="titleInput">Title</label>
+        <input type="text" id="titleInput" maxlength="120" required />
+      </div>
+      <div class="field">
+        <label for="descriptionInput">Description</label>
+        <textarea id="descriptionInput" maxlength="2000" required></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="severityInput">Severity</label>
+          <select id="severityInput" required>
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="typeInput">Bug type</label>
+          <select id="typeInput" required>
+            <option value="Scripting">Scripting</option>
+            <option value="Balancing">Balancing</option>
+            <option value="Build">Build</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="envInput">Environment</label>
+          <select id="envInput" required>
+            <option value="Dev">Dev</option>
+            <option value="Main">Main</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="mediaInput">Media (optional)</label>
+        <input type="file" id="mediaInput" accept="image/*,video/*" multiple />
+        <span class="field-hint">Up to 3 files, 25MB each — photos or short clips.</span>
+      </div>
+      <p class="form-message" id="formMessage"></p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn--ghost" id="cancelReportBtn">Cancel</button>
+        <button type="submit" class="btn btn--discord" id="submitReportBtn">Submit report</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<template id="gamemodeTemplate">
+  <div class="gm">
+    <button class="gm__head" data-gm-toggle>
+      <svg class="gm__chevron" viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span data-gm-name></span>
+      <span class="gm__sub" data-gm-sub></span>
+    </button>
+    <div class="gm__body" data-gm-body hidden>
+      <div class="currencies" data-currencies></div>
+      <div class="paths" data-paths></div>
+    </div>
+  </div>
+</template>
+
+<template id="pathTemplate">
+  <div class="path">
+    <div class="path__label">
+      <span data-path-name></span>
+      <span class="path__count" data-path-count></span>
+    </div>
+    <div class="path__track"><div class="path__fill" data-path-fill></div></div>
+  </div>
+</template>
+
+<template id="reportCardTemplate">
+  <article class="card">
+    <button class="report-card__summary" data-toggle>
+      <span>
+        <span class="report-card__title" data-title></span>
+        <span class="report-card__submitter" data-meta></span>
+      </span>
+      <span class="badge-row">
+        <span class="badge" data-severity-badge></span>
+        <span class="badge" data-points-badge hidden></span>
+      </span>
+      <span class="report-card__meta" data-created></span>
+      <svg class="card__chevron" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="report-card__body" data-body hidden>
+      <div class="badge-row">
+        <span class="badge" data-type-badge></span>
+        <span class="badge" data-env-badge></span>
+      </div>
+      <p class="report-card__description" data-description></p>
+      <div class="media-grid" data-media></div>
+    </div>
+  </article>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/common.js"></script>
+<script src="account.js"></script>
+</body>
+</html>
