@@ -1,0 +1,456 @@
+# Tester Tracker
+
+A dashboard for viewing tester save data from your Roblox game. When a
+player leaves, their data is upserted into Supabase. Admins get a full
+roster + analytics; testers can sign in with Discord, prove they own their
+Roblox account once, and see their own stats and ranking from then on.
+
+```
+roblox/    → server script that sends data to Supabase
+supabase/  → SQL schema + the verify-roblox Edge Function
+docs/      → the static site (now several pages, see below)
+```
+
+## Site structure — two areas, organized by who they're for
+
+The site is just two pages now: an **Admin** area and an **Account** area,
+each a folder with an `index.html` in it — the pattern GitHub Pages uses
+for clean URLs. Everything an admin needs (Roster, Analytics, Reports) is
+one tabbed page; everything a tester needs (My Stats, My Reports) is the
+other. No more hunting across five separate URLs for things that belong
+together.
+
+```
+docs/
+  index.html      → https://<user>.github.io/<repo>/         (Admin: Roster / Analytics / Reports tabs)
+  account/        → https://<user>.github.io/<repo>/account/  (Account: My Stats / My Reports tabs)
+  shared/           common.js, style.css, config.js — used by both pages
+  assets/           logo.png
+```
+
+Within Admin, **Reports** has its own nested sub-tabs (Pending / Approved /
+Resolved / Trash) — so there are two levels of tabs, but never more than
+that, and the visual weight of each level makes the hierarchy obvious (the
+top-level tabs are the wide pill row under the header; sub-tabs are the
+smaller rounded group beneath them).
+
+**Navigation is role-aware.** The header only ever shows links to places
+you can actually do something — a plain tester never sees "Admin" in the
+nav, and it isn't just hidden with CSS, the page itself refuses non-admins
+entry (see "How access control works" below). This replaced the old
+always-visible 5-link nav, which showed every admin page to every signed-in
+person regardless of whether they had access — clicking through just got
+you an "access denied" screen. Now that screen is rare, since the link to
+get there mostly isn't shown in the first place.
+
+**To add a new admin feature later:** add a tab to `#sectionTabs` in
+`docs/index.html`, a matching panel `<div>`, and its rendering logic in
+`docs/admin.js` — no new page, new nav wiring, or new auth check needed,
+since the whole Admin page already shares one. Same pattern for tester
+features under `docs/account/account.js`. `shared/common.js` still has the
+Supabase client, formatting helpers, `renderNav`, and a small `wireTabs`
+helper every tab-based section uses.
+
+## How access control works
+
+1. Everyone signs in with **Discord**, handled by Supabase Auth — no
+   separate password system.
+2. **The whole Admin page** stays admin-only: a Postgres table,
+   `allowed_admins`, lists the Discord IDs allowed in, enforced by Row Level
+   Security (RLS) — not just hidden in JavaScript, and not just hidden nav
+   links either. A non-admin who somehow lands on `/` directly still gets
+   the RLS-backed "access denied" screen, same as before — the nav just no
+   longer invites them to try.
+3. **My Stats** (inside Account) is open to any signed-in tester, but a
+   Postgres RLS policy only ever lets them read the *one* players row
+   linked to their own Discord ID (see the verification flow below for how
+   that link gets made).
+4. Ranking/placement ("you're #4 of 12 in Global XP") is computed by a
+   Postgres function (`get_my_placement`) that runs with elevated privileges
+   *inside the database* and only ever returns the caller's own numbers —
+   it never hands other testers' rows to the browser, even though it has to
+   compare against everyone's data to compute a rank.
+5. The Roblox game writes using the **service role key**, which bypasses RLS
+   entirely, so saving always works regardless of who can read what.
+
+The anon key in `shared/config.js` is safe to publish — on its own it can't
+read or write anything; RLS is what actually locks things down.
+
+## 1. Create / update the Supabase project
+
+1. Go to [supabase.com](https://supabase.com) → New project (skip if you
+   already have one from before).
+2. **SQL Editor** → paste in the full contents of `supabase/schema.sql` →
+   Run. This file is safe to re-run in full even if you ran an earlier
+   version before — everything in it is written to not duplicate or break
+   existing data.
+3. Add admins to the allow list (unchanged from before):
+   ```sql
+   insert into public.allowed_admins (discord_id, label)
+   values ('123456789012345678', 'YourName');
+   ```
+
+## 2. Set up Discord OAuth
+
+Same as before, with one addition now that there are multiple pages:
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) →
+   your app (or a new one) → **OAuth2** → copy the Client ID/Secret.
+2. Under OAuth2 → Redirects, make sure this is present:
+   ```
+   https://<your-project-ref>.supabase.co/auth/v1/callback
+   ```
+3. In Supabase: **Authentication → Providers → Discord** → paste in the
+   Client ID/Secret → Save.
+4. In Supabase: **Authentication → URL Configuration → Redirect URLs**, add
+   a **wildcard** entry covering the whole site rather than one URL per page:
+   ```
+   https://<user>.github.io/<repo>/**
+   ```
+   This is important now — each page (`/`, `/account/`, and anything you
+   add later) sends people back to wherever they signed in from, so a
+   single exact URL in this list won't cover both.
+
+## 3. Configure the website
+
+`docs/shared/config.js` is shared by every page now — one file to edit:
+
+```js
+window.TESTER_TRACKER_CONFIG = {
+  SUPABASE_URL: "https://xxxxxxxx.supabase.co",
+  SUPABASE_ANON_KEY: "eyJ...",
+};
+```
+
+## 4. Deploy the Edge Functions
+
+Two pieces here aren't just static files — checking someone's live Roblox
+bio, and posting to a Discord webhook, both have to happen somewhere
+trusted, not in the browser (more on why below). Supabase Edge Functions
+are small serverless functions that live alongside your database:
+
+1. Install the [Supabase CLI](https://supabase.com/docs/guides/cli) and run
+   `supabase login`.
+2. From this project's **root folder** — the one containing `supabase/`,
+   `docs/`, and `roblox/`, not from inside `supabase/` itself — run
+   `supabase init` (only needed once, creates `supabase/config.toml`) then
+   `supabase link --project-ref <your-project-ref>`.
+3. Deploy both functions:
+   ```
+   supabase functions deploy verify-roblox
+   supabase functions deploy redeem-points
+   ```
+4. They need `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`
+   available as secrets — these are usually auto-provided to every Edge
+   Function already. If a function errors on startup, set them manually:
+   ```
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
+5. `redeem-points` also needs a Discord webhook URL to post redemption logs
+   to. Create one in your Discord server: **Channel Settings → Integrations
+   → Webhooks → New Webhook** → copy its URL, then:
+   ```
+   supabase secrets set DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+   ```
+   If this secret is missing, redemptions still work — they just won't post
+   a log message anywhere, silently.
+
+**Why these can't just be client-side JavaScript:** Roblox's public API
+doesn't return the browser-friendly CORS headers needed for a page hosted
+on GitHub Pages to call it directly — the request would just fail. Discord
+webhook URLs are secrets that shouldn't be embedded in a public page's
+source at all. And in both cases, only server-side code holding the
+service role key is allowed to write to `discord_id` or `points`; the
+browser's anon key deliberately can't (see the RLS policies in
+`schema.sql`) — otherwise a tester could edit the page's JavaScript in
+devtools and grant themselves whatever they wanted.
+
+## 5. Host it on GitHub Pages
+
+1. Push this whole project (`README.md`, `roblox/`, `supabase/`, `docs/`) to
+   a repo, keeping `docs/` as a top-level folder — don't move its contents
+   to the repo root.
+2. Repo → **Settings → Pages** → **Source: Deploy from a branch** → **Branch:
+   `main`, folder: `/docs`** → Save.
+3. Give it a minute, then visit `https://<user>.github.io/<repo>/` — it'll
+   load `docs/index.html` (the Admin page) directly, and
+   `https://<user>.github.io/<repo>/account/` works with no extra config,
+   since GitHub Pages serves a folder's `index.html` automatically.
+
+**Why `/docs` specifically, and not the repo root:** if you'd pushed the
+site's files directly into the repo root instead, GitHub Pages would have
+nothing to serve at `/` (no `index.html` there) and would fall back to
+rendering your `README.md` as the homepage instead — which is exactly the
+"it shows the README" problem this setup avoids. Using the `/docs` folder
+as the Pages source also means `roblox/` and `supabase/` never get served
+as web pages at all, only `docs/` does.
+
+**One security note while we're on repo structure:** if this repo is
+public, anyone can browse `roblox/` and `supabase/` on github.com itself
+regardless of your Pages settings — GitHub Pages config only controls what
+gets *served as a website*, not what's visible in the repo. So never commit
+a copy of `TesterTrackerSender.server.lua` with your **real** service role
+key filled in — keep the version in this repo as the placeholder template,
+and paste the real key only directly into the Script in Roblox Studio,
+which isn't tracked by git at all.
+
+## 6. Wire up the Roblox side
+
+Unchanged from before — see `roblox/TesterTrackerSender.server.lua`. It
+sends the player's whole data table as-is, so `Playtime`/`SessionTime` flow
+through automatically once they exist in that table in-game.
+
+## How tester self-verification works
+
+The first time a tester signs in on **My Stats** who isn't already linked:
+
+1. They enter their **Roblox username**.
+2. If it matches a tracked players row (and isn't already linked to someone
+   else), the site shows a one-time string like `k7q2mfr9pj`.
+3. They paste that code anywhere in their Roblox bio (Roblox profile → Edit
+   Profile → About) and save it.
+4. They click **Confirm** — the Edge Function fetches their live Roblox
+   profile server-side and checks the bio for the code.
+5. On a match, their Discord ID is written onto that players row. Every
+   login after that skips straight to their stats — no re-verifying.
+
+Codes expire after 15 minutes and are stored server-side only
+(`tester_verifications`, a table the website itself has no read/write
+access to); a tester can restart with a different username at any point,
+which just overwrites their own pending attempt.
+
+## Using the site
+
+- **Admin** (`/`) — admin-only, one page with three tabs:
+  - **Roster**: every tester's stats, points, and a redeem control on each card.
+  - **Analytics**: averages, gamemode completion, and leaderboards (playtime, XP, points).
+  - **Reports**: Pending / Approved / Resolved / Trash as its own sub-tabs — review,
+    approve (with points), reject, mark resolved, or restore/delete from Trash.
+- **Account** (`/account/`) — any verified tester, one page with two tabs:
+  - **My Stats**: their own stats, points, per-gamemode progress, and where they rank.
+  - **My Reports**: submit new bug reports and track Pending / Approved / Resolved ones.
+
+### About `Playtime` and `SessionTime`
+
+Same fail-safe as before: every place that reads these (roster, analytics,
+profile, ranking) treats a missing/non-numeric value as "no data" rather
+than 0, so testers without it yet are excluded from averages and rankings
+instead of skewing them, and the page shows "—" / "No data yet" instead of
+breaking. If your game stores these in a unit other than seconds, adjust
+`formatDuration()` in `docs/shared/common.js`.
+
+## Tester points
+
+Points are a **dedicated column** on `players` (`points`), deliberately
+kept separate from the `data` JSON blob the Roblox game sends. That's not
+an arbitrary choice — the game upserts `data` wholesale every time a player
+leaves, so if points lived inside it, the next save would silently
+overwrite whatever an admin had just awarded. Keeping it as its own column
+means only two things ever touch it: approving a bug report (adds points)
+and redeeming points (subtracts them) — never the game sync.
+
+- Testers see their own point balance on **My Stats**.
+- Admins see everyone's on the **Roster** (as a chip and in each card's
+  detail grid) and in aggregate on **Analytics**.
+- Admins redeem points from a tester's roster card: enter an amount, confirm,
+  and it's deducted immediately and logged to Discord via the
+  `redeem-points` Edge Function (see the deploy step above). If the
+  requested amount is more than the tester has, it's rejected with a clear
+  error rather than going negative.
+
+**About the `clearance` column on `allowed_admins`:** added now so a later
+migration doesn't have to touch existing rows, but nothing reads it yet —
+every admin behaves identically today. This is where you'd plug in the
+"only some admins can hard-delete from Trash / redeem points" restriction
+you mentioned wanting later: add a check like `clearance >= 2` inside
+`delete_bug_report()` and the `redeem-points` function once you've decided
+what the tiers should mean.
+
+## Bug report system
+
+**For testers (My Reports):** fill in a title, description, severity
+(Low/Medium/High), bug type (Scripting/Balancing/Build), environment
+(Dev/Main), and optionally up to 3 photos/videos. Submitting inserts a row
+directly from the browser — no Edge Function needed here, since Row Level
+Security already guarantees a tester can only file a report under their
+own linked identity (see the `bug_reports` policies in `schema.sql`).
+Reports show up under **Pending** until an admin reviews them, then move to
+**Approved** (with the points awarded shown) or simply disappear from the
+tester's view if rejected.
+
+**For admins (Reports):** three tabs —
+
+- **Pending** — full details, submitter's username, and any attached
+  media. Approve with a points value (credited to the tester immediately)
+  or reject.
+- **Approved** — a read-only record of what's been approved and for how
+  many points.
+- **Trash** — rejected reports from the last 7 days, each with a "days
+  left" countdown, a **Restore** button (sends it back to Pending), and a
+  **Delete forever** button. There's no separate table for this — a
+  rejected report *is* the trash; the 7-day window is just measured from
+  when it was rejected.
+
+**Automatic 7-day cleanup:** there's a `purge_expired_rejected_reports()`
+function that deletes anything rejected more than 7 days ago, but nothing
+schedules it to run on its own — true cron scheduling needs the `pg_cron`
+extension, which isn't set up here to keep this simpler. Instead, it runs
+once, automatically, every time an admin opens the **Trash** tab. In
+practice that's plenty for a small tester program; if you want guaranteed
+cleanup even when nobody visits Trash for a while, enable `pg_cron` in
+Supabase and schedule `select public.purge_expired_rejected_reports();` to
+run daily.
+
+**Keeping storage minimal:** `bug_reports` rows never contain the actual
+media — only a small JSON array of Storage file paths. The photos/videos
+themselves live in a private Supabase Storage bucket
+(`bug-report-media`), capped at 25MB/file, and are only ever reachable
+through short-lived signed URLs generated for someone who already has
+permission to see that report (their own, or an admin). One known gap: hard-deleting a report (from Trash, or automatically after 7 days)
+removes the database row but doesn't currently also delete its files from
+Storage — those become orphaned. For a small volume of rejected reports
+this is unlikely to matter much, but if it becomes a real storage cost,
+that cleanup could be added to `delete_bug_report()` and
+`purge_expired_rejected_reports()` later.
+
+## Fixing "Where you rank" showing nothing
+
+If you saw no ranking data on My Stats even with several testers tracked,
+this was a real bug, now fixed in `schema.sql`: `get_my_placement()` cast
+`data->>'Stars'` (etc.) straight to `numeric`, which **throws and aborts
+the entire query** if even one tester anywhere has a non-numeric or
+malformed value there — not just skips that row. With a small, actively-
+evolving set of testers, that's an easy way for the whole ranking feature
+to quietly fail for everyone. It now runs every JSON-derived value through
+a small `safe_numeric()` helper that treats anything that doesn't look
+like a plain number as "no data" instead of erroring out, and Points (a
+real integer column, never a risk here) was added as a fifth ranked metric
+— so even in the worst case, every tester has at least one metric that's
+guaranteed to show. Just re-run the full `schema.sql` to pick this up.
+
+## Resolved reports
+
+An approved report can now be marked **resolved** (fixed) from the
+Approved tab — it moves into its own **Resolved** tab and, like Trash,
+auto-deletes 7 days after being resolved (`resolved_at`, tracked
+separately from the original approve/reject decision). Testers see their
+own resolved reports on **My Reports** too, until that same 7-day window
+closes them out — no extra setup needed there since the existing "read
+your own reports" policy already covers every status, resolved included.
+
+## Fixing the touching/bleeding-through report tabs
+
+This turned out to be the same CSS bug as the earlier analytics/stats
+issue, just showing up in two more places: `.report-list` and
+`.report-actions` both set an explicit `display: flex`, which silently
+overrides the browser's `[hidden] { display: none }` rule (same
+specificity, author styles win). The practical effect was that all three
+tab panels (Pending/Approved/Trash) were rendering at once, stacked
+directly against each other with no separation — which is both why
+reports from every status appeared to bleed into every tab, and why it
+looked like the cards were "touching." The same bug also kept every
+action row (Approve/Reject, Restore/Delete) visible on every card
+regardless of its actual status, since those buttons live in a
+`.report-actions` element with the identical problem.
+
+Given this is now the third time this exact pattern has caused a bug,
+`shared/style.css` got a full audit rather than another one-off patch —
+two more silent instances were found and fixed preemptively (`.badge` and
+`.search`) before they caused the same kind of confusion later.
+
+## Point redemption changes
+
+A reason is now required to redeem points — the amount and reason fields
+on the roster card must both be filled in, and the `redeem-points`
+function double-checks this server-side too (so it can't be bypassed by
+editing the page). The Discord webhook log now mentions the tester
+directly (`<@discord_id>`) when they've linked their account, falling
+back to just their Roblox username if they haven't verified yet.
+
+## Visual redesign
+
+Swapped the black-and-yellow terminal look for something that actually
+matches a playful studio: a warm indigo background instead of black, a
+wider color palette (pink, teal, purple, and orange alongside the
+original yellow — still a nod to the logo, just not the *only* color
+anymore), much rounder corners throughout, bouncier button/card hover
+animations, and **Baloo 2** + **Quicksand** in place of the old
+Space Grotesk / IBM Plex Mono pairing, which read more like a technical
+dashboard than a game studio's tool. The CRT scanline effect is gone
+entirely — that one was doing a lot of the "serious sci-fi" heavy lifting
+on its own.
+
+Every page's stylesheet link now has a `?v=4` cache-busting query string,
+bumped again with this change — if a redeploy ever doesn't visibly show up
+again in the future, bump that number by one on all 5 pages rather than
+troubleshooting from scratch.
+
+## The site revamp (5 pages → 2)
+
+The site used to be five flat, equally-weighted pages — Roster, Analytics,
+Reports, My Stats, and My Reports — each with its own nav row showing all
+five links to everyone, regardless of whether they had access to them. Two
+real problems came from that: the nav didn't reflect what a given person
+could actually do (a plain tester saw admin pages listed right next to
+their own, with clicking through just landing on "access denied"), and
+related things were spread across separate URLs with duplicated headers,
+gates, and auth checks for no real benefit.
+
+This is now two pages — **Admin** (`/`) and **Account** (`/account/`) —
+each with tabs for what used to be separate pages, and both pull double
+duty: each area does one Discord sign-in and one data fetch that all of
+its tabs share, rather than every former page repeating the same auth
+check and re-querying the same data.
+
+The **nav itself is now role-aware** (`TT.renderNav` in `shared/common.js`):
+it's built fresh after checking who's signed in, and only ever lists a
+destination the current person can use — "Admin" only appears for actual
+admins, "My Account" for anyone signed in. This is a stronger fix than
+hiding the old links with CSS would have been, since it's driven by the
+same admin check the page itself uses to grant or deny access, not a
+separate, easy-to-drift copy of that logic.
+
+## Fixing "Where you rank" (again) — and redesigning it
+
+The old ranking feature tried to compute all five metrics for you in one
+query and, in practice, wasn't showing anything. Rather than keep patching
+that function, it's been replaced outright with a smaller, purpose-built
+one: **`get_rank_neighbors(metric)`**. Pick a category from the dropdown
+on My Stats, and it returns just three rows — whoever's one spot better
+than you, you (highlighted), and whoever's one spot worse — instead of
+trying to rank everything at once. Smaller surface area, easier to reason
+about, and matches the new "who's around me" framing instead of a wall of
+percentile stats.
+
+If this still doesn't show anything after you redeploy: **re-run the full
+`schema.sql` again** (it adds the new function; re-running the whole file
+is always safe), and check the browser console — `renderRankNeighbors()`
+now logs the real Postgres error there if the call fails, rather than
+showing the same generic message regardless of cause.
+
+## Visual and tone revamp
+
+The look and feel got warmed up — the goal was less "generated admin
+dashboard," more "something a game studio actually made":
+
+- **Copy throughout is warmer and more conversational** — "Restricted
+  access" became "Hold up! 🙋", "Access denied" became "Not quite! 🙅",
+  empty states got personality ("Trash is empty — nice and tidy! ✨")
+  instead of flat status text.
+- **Dropped the uppercase-tracked-label look** (`LIKE THIS`) on headers,
+  taglines, and the roster stat line — that specific styling is one of the
+  most common "AI-generated SaaS template" tells, so those now read in
+  normal sentence case with the friendly display font instead.
+- **The loading/sign-in screens use the actual studio mascot**, bouncing,
+  instead of generic pulsing rings — small change, but abstract loading
+  rings are an extremely common generic-dashboard motif, and swapping in
+  your own logo instead makes the same screen feel like *your* product's.
+- **Stat cards got colorful accent stripes** that cycle through the site's
+  palette instead of being identical gray boxes, plus a small hover tilt —
+  breaks up the "uniform card grid" pattern that reads very template-y at
+  a glance.
+- Section headers picked up small matching emoji (🎯 Gamemode completion,
+  🏆 Where you rank, 🐛 Report a bug, etc.) for a bit more personality
+  without adding visual noise.
+
+Cache-busting version bumped to `?v=6` on both pages for this round.
